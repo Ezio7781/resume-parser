@@ -1,0 +1,19 @@
+# Core dependencies with pinned versions for security
+pandas==2.1.4
+openpyxl==3.11.2
+docx2txt==0.8
+PyPDF2==4.0.1
+httpx==0.25.2
+cryptography==41.0.7
+Flask==3.0.0
+python-docx==0.8.11
+Werkzeug==3.0.1
+
+# Production server (instead of built-in Flask development server)
+gunicorn==21.2.0
+
+# Additional security/monitoring
+requests==2.31.0
+
+# Optional: For production deployment
+python-dotenv==1.0.0
