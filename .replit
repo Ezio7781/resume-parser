@@ -1,8 +1,0 @@
-run = "gunicorn --bind 0.0.0.0:8080 app:app"
-
-[env]
-FLASK_ENV = "production"
-PYTHONUNBUFFERED = "1"
-
-[nix]
-channel = "stable-23_11"
