@@ -1,0 +1,161 @@
+{
+  "meta": {
+    "instanceId": "8fa70b4d5c381d0b8b2a4c3a4e2a"
+  },
+  "name": "Resume Parser - Auto Import",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-node",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "returnAll": false
+      },
+      "id": "read-resumes",
+      "name": "Read Resumes",
+      "type": "n8n-nodes-base.files",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "file": {
+            "value1": [
+              {
+                "mode": "basic",
+                "value": ".*\\.(pdf|docx?|txt)$"
+              }
+            ],
+            "operation": "any"
+          }
+        }
+      },
+      "id": "filter-resumes",
+      "name": "Filter Resume Files",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "command": "python3 n8n_resume_parser.py \"{{ $json.file.data.path }}\"",
+        "failOnStdErr": true
+      },
+      "id": "parse-resume",
+      "name": "Parse Resume",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [900, 300],
+      "continueOnFail": false
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse JSON output from Python script\nconst output = $input.first().json;\nconst result = output.replace(/^[^{]+/, '').replace(/}+$/, '');\n\ntry {\n  const parsed = JSON.parse(result);\n  return {\n    json: {\n      filename: parsed.filename || 'unknown',\n      full_name: parsed.full_name || null,\n      email: parsed.email || null,\n      phone_number: parsed.phone_number || null,\n      alternate_phone_number: parsed.alternate_phone_number || null,\n      highest_qualification: parsed.highest_qualification || null,\n      years_of_experience: parsed.years_of_experience || null,\n      current_company: parsed.current_company || null,\n      current_designation: parsed.current_designation || null,\n      city: parsed.city || null,\n      state: parsed.state || null,\n      success: parsed.success || false,\n      parsed_at: parsed.parsed_at || new Date().toISOString(),\n      error: parsed.error || null\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      filename: 'unknown',\n      error: result,\n      success: false,\n      parsed_at: new Date().toISOString()\n    }\n  };\n}"
+      },
+      "id": "process-result",
+      "name": "Process Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all results\nconst allResults = [];\n$input.all().forEach(item => {\n  const data = item.json;\n  if (data.success) {\n    allResults.push(data);\n  }\n});\n\nreturn {\n  json: {\n    total_processed: $input.all().length,\n    successful_parses: allResults.length,\n    success_rate: Math.round((allResults.length / $input.all().length) * 100),\n    results: allResults,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "collect-results",
+      "name": "Collect Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "filePath": {
+          "__rl": true,
+          "value": "resume_results_{{ $now.format('YYYY-MM-DD_HH-mm-ss') }}.json",
+          "mode": "path"
+        },
+        "options": {
+          "createDirs": true
+        }
+      },
+      "id": "save-json",
+      "name": "Save JSON Results",
+      "type": "n8n-nodes-base.writeFile",
+      "typeVersion": 1,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "csvFormat": "custom",
+        "options": {
+          "fileName": "resume_results_{{ $now.format('YYYY-MM-DD_HH-mm-ss') }}.csv"
+        },
+        "columns": {
+          "custom": [
+            {"name": "filename", "displayName": "Filename", "dataTypeName": "string"},
+            {"name": "full_name", "displayName": "Full Name", "dataTypeName": "string"},
+            {"name": "email", "displayName": "Email", "dataTypeName": "string"},
+            {"name": "phone_number", "displayName": "Phone Number", "dataTypeName": "string"},
+            {"name": "alternate_phone_number", "displayName": "Alternate Phone", "dataTypeName": "string"},
+            {"name": "highest_qualification", "displayName": "Highest Qualification", "dataTypeName": "string"},
+            {"name": "years_of_experience", "displayName": "Years of Experience", "dataTypeName": "number"},
+            {"name": "current_company", "displayName": "Current Company", "dataTypeName": "string"},
+            {"name": "current_designation", "displayName": "Current Designation", "dataTypeName": "string"},
+            {"name": "city", "displayName": "City", "dataTypeName": "string"},
+            {"name": "state", "displayName": "State", "dataTypeName": "string"},
+            {"name": "success", "displayName": "Parse Success", "dataTypeName": "boolean"},
+            {"name": "parsed_at", "displayName": "Parsed At", "dataTypeName": "dateTime"}
+          ]
+        }
+      },
+      "id": "save-csv",
+      "name": "Save CSV Results",
+      "type": "n8n-nodes-base.csv",
+      "typeVersion": 1,
+      "position": [1560, 400]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [["read-resumes", "main"]]
+    },
+    "Read Resumes": {
+      "main": [["filter-resumes", "main"]]
+    },
+    "Filter Resume Files": {
+      "main": [["parse-resume", "main"]]
+    },
+    "Parse Resume": {
+      "main": [["process-result", "main"]]
+    },
+    "Process Result": {
+      "main": [["collect-results", "main"]]
+    },
+    "Collect Results": {
+      "main": [["save-json", "main"], ["save-csv", "main"]]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-01-07T23:50:00.000Z",
+      "updatedAt": "2025-01-07T23:50:00.000Z",
+      "id": "1"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-07T23:50:00.000Z",
+  "versionId": "1"
+}

@@ -9,11 +9,7 @@ Flask==3.0.0
 python-docx==0.8.11
 Werkzeug==3.0.1
 
-# Production server (instead of built-in Flask development server)
-gunicorn==21.2.0
+# PDF extraction enhancements
+pdfplumber==0.10.3
+pypdf==4.0.1
 
-# Additional security/monitoring
-requests==2.31.0
-
-# Optional: For production deployment
-python-dotenv==1.0.0

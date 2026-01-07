@@ -1,0 +1,590 @@
+{
+  "name": "Resume Parser Automation",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "start-node",
+      "name": "Start",
+      "type": "n8n-nodes-base.start",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "list",
+        "returnAll": false
+      },
+      "id": "read-files",
+      "name": "Read Resumes",
+      "type": "n8n-nodes-base.files",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "file": {
+            "value1": [
+              {
+                "mode": "basic",
+                "value": ".*"
+              }
+            ],
+            "operation": "any"
+          }
+        },
+        "combineOperation": "any",
+        "options": {}
+      },
+      "id": "file-filter",
+      "name": "Filter Resume Files",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": {
+          "__rl": true,
+          "value": "={{ $json.file.data.path }}",
+          "mode": "path"
+        }
+      },
+      "id": "read-binary",
+      "name": "Read File Content",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "file": {
+            "value1": [
+              {
+                "mode": "basic",
+                "value": "\\.pdf$"
+              }
+            ],
+            "operation": "any"
+          }
+        },
+        "combineOperation": "any",
+        "options": {}
+      },
+      "id": "is-pdf",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "file": {
+            "value1": [
+              {
+                "mode": "basic",
+                "value": "\\.(docx|doc)$"
+              }
+            ],
+            "operation": "any"
+          }
+        },
+        "combineOperation": "any",
+        "options": {}
+      },
+      "id": "is-docx",
+      "name": "Is Word Document?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "file": {
+            "value1": [
+              {
+                "mode": "basic",
+                "value": "\\.txt$"
+              }
+            ],
+            "operation": "any"
+          }
+        },
+        "combineOperation": "any",
+        "options": {}
+      },
+      "id": "is-txt",
+      "name": "Is Text File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "command": "python3 resume_parser.py \"{{ $json.file.data.path }}\""
+      },
+      "id": "parse-python",
+      "name": "Parse Resume (Python)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "command": "python3 -c \"\nimport sys\nimport os\nsys.path.append(os.path.dirname(os.path.abspath('{{ $json.file.data.path }}')))\nfrom resume_parser import extract_text\ntext = extract_text('{{ $json.file.data.path }}')\nprint(f'EXTRACTED_TEXT:{text}')\n\"",
+        "cwd": {
+          "__rl": true,
+          "value": "={{ $json.file.data.path | $substring(0, $lastIndexOf($json.file.data.path, '/')) }}",
+          "mode": "path"
+        }
+      },
+      "id": "extract-text",
+      "name": "Extract Text Content",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract text from output\nconst output = $input.all()[0].json;\nconst textMatch = output.match(/EXTRACTED_TEXT:(.*)/s);\n\nif (textMatch && textMatch[1]) {\n  return {\n    json: {\n      content: textMatch[1],\n      filename: $json[\"file\"].data.name,\n      path: $json[\"file\"].data.path\n    }\n  };\n}\n\n// Fallback for errors\nreturn {\n  json: {\n    content: '',\n    filename: $json[\"file\"].data.name,\n    path: $json[\"file\"].data.path,\n    error: true\n  }\n};"
+      },
+      "id": "process-text",
+      "name": "Process Extracted Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "command": "python3 -c \"\nimport sys\nimport os\nsys.path.append('.')\nfrom resume_parser import parse_resume\nimport json\n\n# Get text from input\nimport sys\ntext = sys.argv[1] if len(sys.argv) > 1 else ''\n\n# Create temp file\nimport tempfile\nwith tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as f:\n    f.write(text)\n    temp_path = f.name\n\n# Parse the resume\nresult = parse_resume(temp_path)\n\n# Clean up\nimport os\nos.unlink(temp_path)\n\n# Output JSON\nprint(json.dumps(result))\n\" \"{{ $json.content }}\"",
+        "cwd": {
+          "__rl": true,
+          "value": "./",
+          "mode": "path"
+        }
+      },
+      "id": "parse-from-text",
+      "name": "Parse from Text",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse JSON from Python output\nconst output = $input.all()[0].json;\nconst commandOutput = output.replace(/^.*?{/, '').replace(/}$/, '');\n\ntry {\n  const parsedData = JSON.parse(commandOutput);\n  return {\n    json: {\n      ...parsedData,\n      filename: parsedData.filename || 'unknown',\n      source: 'parsed',\n      success: true\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      filename: 'unknown',\n      source: 'parse_error',\n      error: commandOutput,\n      success: false\n    }\n  };\n}"
+      },
+      "id": "process-python-result",
+      "name": "Process Python Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse JSON from PDF/DOCX parsing\nconst output = $input.all()[0].json;\nconst commandOutput = output.replace(/^.*?{/, '').replace(/}$/, '');\n\ntry {\n  const parsedData = JSON.parse(commandOutput);\n  return {\n    json: {\n      ...parsedData,\n      filename: parsedData.filename || 'unknown',\n      source: 'parsed_from_text',\n      success: true\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      filename: 'unknown',\n      source: 'parse_error',\n      error: commandOutput,\n      success: false\n    }\n  };\n}"
+      },
+      "id": "process-text-result",
+      "name": "Process Text Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1780,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge all parsing results\nconst allResults = [];\n\n// Collect all successful parsing results\n$input.all().forEach(item => {\n  const data = item.json;\n  if (data.success && !data.error) {\n    allResults.push({\n      filename: data.filename,\n      full_name: data.full_name,\n      email: data.email,\n      phone_number: data.phone_number,\n      alternate_phone_number: data.alternate_phone_number,\n      highest_qualification: data.highest_qualification,\n      years_of_experience: data.years_of_experience,\n      current_company: data.current_company,\n      current_designation: data.current_designation,\n      city: data.city,\n      state: data.state,\n      source: data.source,\n      parsed_at: new Date().toISOString()\n    });\n  }\n});\n\nreturn {\n  json: {\n    total_files: $input.all().length,\n    successful_parses: allResults.length,\n    results: allResults,\n    summary: `Successfully parsed ${allResults.length} out of ${$input.all().length} files`\n  }\n};"
+      },
+      "id": "merge-results",
+      "name": "Merge Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toJSON",
+        "options": {}
+      },
+      "id": "json-output",
+      "name": "JSON Output",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "json": {
+            "value1": [
+              {
+                "mode": "json",
+                "value": "={{ $json.successful_parses > 0 }}"
+              }
+            ],
+            "operation": "equal"
+          }
+        },
+        "combineOperation": "any",
+        "options": {}
+      },
+      "id": "success-check",
+      "name": "Has Successful Parses?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "filePath": {
+          "__rl": true,
+          "value": "resume_results_{{ $now.format('YYYY-MM-DD_HH-mm-ss') }}.json",
+          "mode": "path"
+        },
+        "options": {
+          "createDirs": true
+        }
+      },
+      "id": "save-json",
+      "name": "Save JSON File",
+      "type": "n8n-nodes-base.writeFile",
+      "typeVersion": 1,
+      "position": [
+        2660,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "csvFormat": "custom",
+        "options": {
+          "fileName": "resume_results_{{ $now.format('YYYY-MM-DD_HH-mm-ss') }}.csv"
+        },
+        "columns": {
+          "custom": [
+            {
+              "name": "filename",
+              "displayName": "Filename",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "full_name",
+              "displayName": "Full Name",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "email",
+              "displayName": "Email",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "phone_number",
+              "displayName": "Phone Number",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "alternate_phone_number",
+              "displayName": "Alternate Phone",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "highest_qualification",
+              "displayName": "Highest Qualification",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "years_of_experience",
+              "displayName": "Years of Experience",
+              "dataTypeName": "number"
+            },
+            {
+              "name": "current_company",
+              "displayName": "Current Company",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "current_designation",
+              "displayName": "Current Designation",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "city",
+              "displayName": "City",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "state",
+              "displayName": "State",
+              "dataTypeName": "string"
+            },
+            {
+              "name": "parsed_at",
+              "displayName": "Parsed At",
+              "dataTypeName": "dateTime"
+            }
+          ]
+        }
+      },
+      "id": "create-csv",
+      "name": "Create CSV",
+      "type": "n8n-nodes-base.csv",
+      "typeVersion": 1,
+      "position": [
+        2660,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Read Resumes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Resumes": {
+      "main": [
+        [
+          {
+            "node": "Filter Resume Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Resume Files": {
+      "main": [
+        [
+          {
+            "node": "Read File Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read File Content": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Word Document?",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Is Text File?",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Parse Resume (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Word Document?": {
+      "main": [
+        [
+          {
+            "node": "Parse Resume (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Text File?": {
+      "main": [
+        [
+          {
+            "node": "Parse Resume (Python)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Resume (Python)": {
+      "main": [
+        [
+          {
+            "node": "Process Python Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text Content": {
+      "main": [
+        [
+          {
+            "node": "Process Extracted Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Extracted Text": {
+      "main": [
+        [
+          {
+            "node": "Parse from Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse from Text": {
+      "main": [
+        [
+          {
+            "node": "Process Text Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Python Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Text Result": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "JSON Output",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Has Successful Parses?",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Has Successful Parses?": {
+      "main": [
+        [
+          {
+            "node": "Save JSON File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-01-07T23:38:00.000Z",
+      "updatedAt": "2025-01-07T23:38:00.000Z",
+      "id": "1"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-07T23:38:00.000Z",
+  "versionId": "1"
+}

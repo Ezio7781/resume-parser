@@ -24,6 +24,12 @@ try:
 except Exception:
     call_llm_extract = None
 
+try:
+    from resume_parser import parse_resume, extract_text
+except Exception:
+    parse_resume = None
+    extract_text = None
+
 
 app = Flask(__name__)
 
@@ -56,22 +62,22 @@ HTML_TEMPLATE = '''
     <style>
         {% if not default_theme %}
         :root {
-            --primary: #D97706; /* warm amber */
-            --primary-dark: #C2410C;
-            --secondary: #FB923C; /* warm orange */
-            --success: #16A34A;
-            --success-dark: #15803D;
-            --danger: #DC2626;
+            --primary: #3B82F6; /* blue */
+            --primary-dark: #1E40AF;
+            --secondary: #8B5CF6; /* purple */
+            --success: #10B981;
+            --success-dark: #059669;
+            --danger: #EF4444;
             --warning: #F59E0B;
-            --bg-primary: #FFF7ED; /* soft warm paper */
-            --bg-secondary: #FFF1E6;
-            --bg-tertiary: #FFEAD5;
-            --text-primary: #2B2B2B; /* warm dark */
-            --text-secondary: #5B4636;
-            --text-muted: #7A5A44;
-            --border-color: #FDEAC2;
-            --shadow: rgba(43, 33, 19, 0.06);
-            --shadow-lg: rgba(43, 33, 19, 0.12);
+            --bg-primary: #F9FAFB;
+            --bg-secondary: #F3F4F6;
+            --bg-tertiary: #E5E7EB;
+            --text-primary: #111827;
+            --text-secondary: #374151;
+            --text-muted: #6B7280;
+            --border-color: #D1D5DB;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --shadow-lg: rgba(0, 0, 0, 0.1);
         }
 
         [data-theme="dark"] {
@@ -113,22 +119,22 @@ HTML_TEMPLATE = '''
             --shadow: rgba(0, 0, 0, 0.3);
             --shadow-lg: rgba(0, 0, 0, 0.5);
             {% else %}
-            --primary: #D97706; /* warm amber */
-            --primary-dark: #C2410C;
-            --secondary: #FB923C; /* warm orange */
-            --success: #16A34A;
-            --success-dark: #15803D;
-            --danger: #DC2626;
+            --primary: #3B82F6;
+            --primary-dark: #1E40AF;
+            --secondary: #8B5CF6;
+            --success: #10B981;
+            --success-dark: #059669;
+            --danger: #EF4444;
             --warning: #F59E0B;
-            --bg-primary: #FFF7ED; /* soft warm paper */
-            --bg-secondary: #FFF1E6;
-            --bg-tertiary: #FFEAD5;
-            --text-primary: #2B2B2B; /* warm dark */
-            --text-secondary: #5B4636;
-            --text-muted: #7A5A44;
-            --border-color: #FDEAC2;
-            --shadow: rgba(43, 33, 19, 0.06);
-            --shadow-lg: rgba(43, 33, 19, 0.12);
+            --bg-primary: #F9FAFB;
+            --bg-secondary: #F3F4F6;
+            --bg-tertiary: #E5E7EB;
+            --text-primary: #111827;
+            --text-secondary: #374151;
+            --text-muted: #6B7280;
+            --border-color: #D1D5DB;
+            --shadow: rgba(0, 0, 0, 0.05);
+            --shadow-lg: rgba(0, 0, 0, 0.1);
             {% endif %}
         }
         {% endif %}
@@ -140,12 +146,19 @@ HTML_TEMPLATE = '''
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
         
+        *::selection {
+            background: transparent;
+            color: inherit;
+        }
+        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: var(--bg-secondary);
             min-height: 100vh;
             padding: 20px;
             color: var(--text-primary);
+            scroll-behavior: smooth;
+            overflow-x: hidden;
         }
         
         .container {
@@ -177,6 +190,43 @@ HTML_TEMPLATE = '''
         @keyframes float {
             0%, 100% { transform: translate(0, 0) rotate(0deg); }
             50% { transform: translate(-20px, -20px) rotate(180deg); }
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes slideInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
         }
 
         .header-content {
@@ -302,31 +352,52 @@ HTML_TEMPLATE = '''
             text-align: center;
             margin: 30px 0;
             background: var(--bg-secondary);
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
             cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s ease;
         }
         
         .upload-area:hover {
             border-color: var(--primary);
             background: var(--bg-tertiary);
-            transform: translateY(-2px);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 10px 30px rgba(217, 119, 6, 0.2);
+        }
+
+        .upload-area:hover::before {
+            left: 100%;
         }
         
         .upload-area.dragover {
             border-color: var(--success);
             background: var(--bg-tertiary);
-            transform: scale(1.02);
+            transform: scale(1.04);
+            box-shadow: 0 15px 40px rgba(22, 163, 74, 0.25);
+            border-width: 4px;
         }
         
         .upload-icon {
             font-size: 4em;
             margin-bottom: 15px;
             animation: bounce 2s infinite;
+            display: inline-block;
         }
 
         @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-15px) scale(1.05); }
         }
         
         .upload-text {
@@ -698,6 +769,23 @@ HTML_TEMPLATE = '''
         }
         
         tbody tr {
+            transition: all 0.3s ease;
+            background: var(--bg-primary);
+        }
+        
+        tbody tr:hover {
+            background: var(--bg-secondary);
+            transform: translateX(4px);
+            box-shadow: -4px 0 12px rgba(217, 119, 6, 0.15);
+        }
+        
+        tbody tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+        
+        [data-theme="dark"] tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
             transition: background 0.2s ease;
         }
         
@@ -926,6 +1014,10 @@ HTML_TEMPLATE = '''
     </div>
     
     <script>
+        // ============================================
+        // MAIN APPLICATION LOGIC
+        // ============================================
+        
         let selectedFiles = [];
         let parsedData = [];
         let startTime;
@@ -945,15 +1037,20 @@ HTML_TEMPLATE = '''
         const resultsContainer = document.getElementById('resultsContainer');
         
         {% if not default_theme %}
-        // Theme toggle
+        // Enhanced theme toggle with smooth transition
         function toggleTheme() {
             const body = document.body;
             const currentTheme = body.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            
+            body.style.transition = 'background-color 0.4s ease, color 0.4s ease';
             body.setAttribute('data-theme', newTheme);
             
             const themeToggle = document.querySelector('.theme-toggle');
-            if (themeToggle) themeToggle.textContent = newTheme === 'light' ? '🌙' : '☀️';
+            if (themeToggle) {
+                themeToggle.textContent = newTheme === 'light' ? '🌙 Dark' : '☀️ Light';
+                themeToggle.style.animation = 'rotate 0.6s ease';
+            }
             
             localStorage.setItem('theme', newTheme);
         }
@@ -1971,31 +2068,129 @@ def clear_parsed():
 
  
 def read_file_content(file):
-    """Read content from uploaded file"""
-    filename = file.filename.lower()
-    
-    if filename.endswith('.txt'):
-        return file.read().decode('utf-8', errors='ignore')
-    
-    elif filename.endswith('.pdf'):
+    """
+    Read content from uploaded file with robust error handling.
+    Supports: TXT, PDF, DOCX, DOC with multiple fallback methods.
+    """
+    try:
+        if not file or not file.filename:
+            return None
+        
+        filename = file.filename.lower()
+        file.seek(0)  # Reset file pointer
+        
+        # TXT files
+        if filename.endswith('.txt'):
+            try:
+                content = file.read()
+                text = content.decode('utf-8', errors='replace')
+                return text if text.strip() else None
+            except Exception as e:
+                logging.warning(f"Failed to read TXT: {e}")
+                return None
+        
+        # PDF files - multiple methods
+        if filename.endswith('.pdf'):
+            # Method 1: PyPDF2
+            try:
+                import PyPDF2
+                file.seek(0)
+                pdf_reader = PyPDF2.PdfReader(file)
+                if pdf_reader.pages:
+                    pages = []
+                    for page_num, page in enumerate(pdf_reader.pages):
+                        try:
+                            text = page.extract_text()
+                            if text and text.strip():
+                                pages.append(text)
+                        except Exception:
+                            logging.warning(f"Failed to extract page {page_num}")
+                    if pages:
+                        result = '\n'.join(pages)
+                        return result if result.strip() else None
+            except Exception as e:
+                logging.warning(f"PyPDF2 failed: {e}")
+            
+            # Method 2: pdfplumber
+            try:
+                import pdfplumber
+                file.seek(0)
+                with pdfplumber.open(file) as pdf:
+                    pages = []
+                    for page in pdf.pages:
+                        text = page.extract_text()
+                        if text and text.strip():
+                            pages.append(text)
+                    if pages:
+                        result = '\n'.join(pages)
+                        return result if result.strip() else None
+            except Exception:
+                logging.debug("pdfplumber not available")
+            
+            # Fallback: binary read
+            try:
+                file.seek(0)
+                content = file.read()
+                text = content.decode('utf-8', errors='replace')
+                return text if text.strip() else None
+            except Exception as e:
+                logging.warning(f"PDF binary read failed: {e}")
+        
+        # DOCX files
+        if filename.endswith('.docx'):
+            try:
+                file.seek(0)
+                text = docx2txt.process(file)
+                return text if text and text.strip() else None
+            except Exception as e:
+                logging.warning(f"docx2txt failed: {e}")
+            
+            # Fallback: python-docx
+            try:
+                from docx import Document
+                from io import BytesIO
+                file.seek(0)
+                doc = Document(BytesIO(file.read()))
+                paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+                if paragraphs:
+                    result = '\n'.join(paragraphs)
+                    return result if result.strip() else None
+            except Exception as e:
+                logging.warning(f"python-docx failed: {e}")
+        
+        # DOC files (older Word format)
+        if filename.endswith('.doc'):
+            try:
+                from docx import Document
+                from io import BytesIO
+                file.seek(0)
+                doc = Document(BytesIO(file.read()))
+                paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+                if paragraphs:
+                    result = '\n'.join(paragraphs)
+                    return result if result.strip() else None
+            except Exception as e:
+                logging.warning(f"DOC read failed: {e}")
+        
+        # Fallback: try binary decode
         try:
-            import PyPDF2
-            pdf_reader = PyPDF2.PdfReader(file)
-            text = ''
-            for page in pdf_reader.pages:
-                text += page.extract_text() + '\n'
-            return text
-        except ImportError:
-            return file.read().decode('utf-8', errors='ignore')
+            file.seek(0)
+            content = file.read()
+            for encoding in ['utf-8', 'latin-1', 'cp1252']:
+                try:
+                    text = content.decode(encoding, errors='replace')
+                    if text.strip():
+                        return text
+                except Exception:
+                    continue
+        except Exception as e:
+            logging.error(f"Fallback decode failed: {e}")
+        
+        return None
     
-    elif filename.endswith(('.doc', '.docx')):
-        try:
-            return docx2txt.process(file)
-        except ImportError:
-            return file.read().decode('utf-8', errors='ignore')
-    
-    else:
-        return file.read().decode('utf-8', errors='ignore')
+    except Exception as e:
+        logging.error(f"Unexpected error in read_file_content: {e}")
+        return None
 
 
 @app.route('/uploads/<path:fname>')
@@ -2042,9 +2237,29 @@ def original_file(fname):
 
 def parse_resume_text(text):
     """
-    Parse resume text and extract structured information.
-    Returns null for any field with confidence < 80%.
+    Parse resume text using the improved resume_parser module.
     """
+    if parse_resume is None:
+        # Fallback if import failed
+        return {
+            'full_name': None,
+            'email': None,
+            'phone_number': None,
+            'alternate_phone_number': None,
+            'highest_qualification': None,
+            'years_of_experience': None,
+            'current_company': None,
+            'current_designation': None,
+            'city': None,
+            'state': None
+        }
+    
+    # Use the improved resume_parser functions directly on text
+    from resume_parser import (extract_name, extract_email, extract_phone,
+                               extract_alternate_phone, extract_qualification,
+                               extract_experience, extract_current_company,
+                               extract_designation, extract_city, extract_state)
+    
     result = {
         'full_name': extract_name(text),
         'email': extract_email(text),
@@ -2059,44 +2274,9 @@ def parse_resume_text(text):
     }
     return result
 
-def extract_name(text):
-    """Extract full name from resume - flexible for different positions"""
-    lines = [line.strip() for line in text.split('\n') if line.strip()]
-    
-    # Skip common headers
-    skip_keywords = ['resume', 'cv', 'curriculum', 'vitae', 'contact', 'profile', 'summary', 'objective', 'introduction', 'personal', 'details']
-    
-    # Search in first 20 lines instead of just 6
-    for line in lines[:20]:
-        line_lower = line.lower()
-        
-        # Skip if line contains header keywords
-        if any(kw in line_lower for kw in skip_keywords):
-            continue
-        
-        # Skip if line contains email, phone, URL patterns
-        if re.search(r'@|http|www|\d{10,}|phone|email|mobile', line_lower):
-            continue
-        
-        # Check if line looks like a name (2-5 words, capitalized)
-        words = line.split()
-        if 2 <= len(words) <= 5:
-            # Check if ALL words are proper names (start with capital, mostly letters)
-            is_name = all(re.match(r"^[A-Z][A-Za-z'\-\.]*$", w) for w in words)
-            if is_name:
-                # Additional check: not all CAPS (likely header)
-                if not all(w.isupper() and len(w) > 1 for w in words):
-                    return line
-    
-    # Fallback: If nothing found in first lines, search entire document
-    for line in lines:
-        words = line.split()
-        if 2 <= len(words) <= 5:
-            if all(re.match(r"^[A-Z][A-Za-z'\-\.]*$", w) for w in words):
-                if not all(w.isupper() for w in words) and len(line) < 60:
-                    return line
-    
-    return None
+
+
+
 
 def extract_email(text):
     """Extract email address - search entire document"""
@@ -2170,31 +2350,62 @@ def extract_alternate_phone(text):
     return unique_phones[1] if len(unique_phones) > 1 else None
 
 def extract_qualification(text):
-    """Extract highest qualification - handle multiple formats and abbreviations"""
+    """
+    Extract highest qualification - ONLY return degree type, never institution name.
+    Must find qualification in Education section for high confidence.
+    """
     text_lower = text.lower()
     
-    # Ordered by qualification level (highest first)
+    # Find Education section specifically
+    edu_section = None
+    lines = text.split('\n')
+    
+    edu_keywords = ['education', 'academic qualifications', 'qualifications', 'academic background', 'academic', 'schooling']
+    
+    for i, line in enumerate(lines):
+        if any(kw in line.lower() for kw in edu_keywords):
+            # Found education section, extract next 1500 chars
+            edu_section = '\n'.join(lines[i:min(i+20, len(lines))])
+            break
+    
+    if not edu_section:
+        edu_section = text_lower
+    
+    # Qualification mappings (degree → keywords that identify it)
     qualifications = [
-        # PhD/Doctorate
-        (['phd', 'ph.d.', 'ph d', 'doctorate', 'doctoral'], 'PhD'),
-        # Masters
-        (['master of technology', 'master in', 'masters in', 'master\'s', 'master degree',
-          'm.tech', 'mtech', 'master\'s degree', 'postgraduate', 'm.s.', 'm.sc.', 'msc',
-          'mba', 'b.a.m', 'ma', 'm.a.'], 'Masters'),
-        # Bachelor
-        (['bachelor of technology', 'bachelor in', 'bachelor\'s', 'bachelor degree',
-          'b.tech', 'btech', 'b.e', 'be', 'b.e.', 'b.s.', 'bs', 'bsc', 'b.a.', 'ba',
-          'b.com', 'bcom', 'bachelor of science', 'bachelor of arts', 'undergraduate'], 'Bachelors'),
-        # Diploma
-        (['diploma', 'dip', 'polytechnic'], 'Diploma'),
-        # Associate/Higher Secondary
-        (['associate', 'a.a', 'a.s', 'hsc', 'higher secondary', '+2'], 'Associate')
+        ('PhD', ['phd', 'ph.d', 'ph d', 'doctorate', 'doctor of philosophy']),
+        ('Masters', ['master', 'mba', 'ms', 'm.s', 'mtech', 'm.tech', 'msc', 'm.sc', 'postgraduate']),
+        ('Bachelors', ['bachelor', 'b.tech', 'btech', 'b.e', 'be', 'bs', 'b.s', 'bsc', 'b.a', 'ba', 'bcom', 'b.com', 'undergraduate']),
+        ('Diploma', ['diploma', 'dip', 'polytechnic']),
+        ('Associate', ['associate', 'hsc', 'higher secondary'])
     ]
     
-    for keywords, qual_name in qualifications:
-        for keyword in keywords:
-            if keyword in text_lower:
-                return qual_name
+    # Search in education section ONLY
+    for degree, keywords in qualifications:
+        for kw in keywords:
+            if kw in edu_section.lower():
+                # Double-check: make sure we're not catching "Stanford Masters" 
+                # by looking at context
+                idx = edu_section.lower().find(kw)
+                context = edu_section[max(0, idx-40):min(len(edu_section), idx+100)].lower()
+                
+                # Blocklist: if context contains university/college/school name indicators with "from/at/in"
+                bad_patterns = [
+                    r'from\s+[a-z\s]+university',
+                    r'from\s+[a-z\s]+college',
+                    r'from\s+[a-z\s]+school',
+                    r'at\s+[a-z\s]+university',
+                    r'in\s+[a-z\s]+university'
+                ]
+                
+                found_bad = False
+                for pattern in bad_patterns:
+                    if re.search(pattern, context):
+                        found_bad = True
+                        break
+                
+                if not found_bad:
+                    return degree
     
     return None
 

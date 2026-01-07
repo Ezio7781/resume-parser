@@ -1,0 +1,12 @@
+John Doe
+john.doe@example.com
++1-555-123-4567
+San Francisco, California
+
+Experience
+Software Engineer at Google
+5 years experience
+
+Education
+Master of Science in Computer Science
+Stanford University
