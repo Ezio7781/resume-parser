@@ -2,7 +2,7 @@
 
 [![Deployment Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)](DEPLOYMENT_READY.md)
 [![Security](https://img.shields.io/badge/Security-Hardened-blue)](SECURITY_REPORT.md)
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.11.9-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
 🚀 **Deploy to free cloud in 5 minutes** → See [DEPLOY_FREE.md](DEPLOY_FREE.md)
@@ -92,7 +92,7 @@ See [DEPLOY_FREE.md](DEPLOY_FREE.md) for:
 
 ## 🔧 Tech Stack
 
-- **Language**: Python 3.8+
+- **Language**: Python 3.11.9
 - **Framework**: Flask 3.0.0
 - **Server**: Gunicorn (production WSGI)
 - **Proxy**: Nginx (optional, for production)
@@ -205,7 +205,7 @@ python resume_parser.py path/to/resume.pdf
 ## 📦 Installation
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.11.9
 - pip
 - Virtual environment (recommended)
 

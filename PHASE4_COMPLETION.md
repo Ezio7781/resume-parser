@@ -37,7 +37,7 @@
    - Works on: Render, Railway, Heroku, etc.
 
 2. **runtime.txt**
-   - Python version: `python-3.11.7`
+   - Python version: `python-3.11.9`
    - Ensures consistent Python environment across platforms
 
 3. **railway.json**

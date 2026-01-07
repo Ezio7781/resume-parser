@@ -177,7 +177,7 @@ Permissions-Policy: geolocation=(), microphone=(), camera=()
 
 ## 🛠️ Tech Stack
 
-- **Language**: Python 3.8+
+- **Language**: Python 3.11.9
 - **Framework**: Flask 3.0.0
 - **Server**: Gunicorn (production WSGI)
 - **Reverse Proxy**: Nginx (recommended)

@@ -16,7 +16,7 @@ A high-performance resume parsing application with a modern web UI, LLM integrat
 ## Installation
 
 ### Requirements
-- Python 3.8+
+- Python 3.11.9
 - pip
 
 ### Setup
