@@ -1,15 +1,21 @@
-# Core dependencies with pinned versions for security
-pandas==2.1.4
-openpyxl==3.11.2
-docx2txt==0.8
-PyPDF2==4.0.1
-httpx==0.25.2
-cryptography==41.0.7
-Flask==3.0.0
-python-docx==0.8.11
-Werkzeug==3.0.1
+# Production-ready requirements with Python 3.8+ compatibility and security fixes
+# Last updated: 2025-01-07
+
+# Core dependencies with compatible versions
+pandas>=1.3.0,<2.2.0
+openpyxl>=3.0.0,<4.0.0
+docx2txt>=0.8,<1.0.0
+PyPDF2>=3.0.0,<4.1.0
+httpx>=0.24.0,<0.30.0
+cryptography>=41.0.0,<44.0.0
+Flask>=2.2.0,<3.1.0
+python-docx>=0.8.11,<1.0.0
+Werkzeug>=2.2.0,<3.2.0
 
 # PDF extraction enhancements
-pdfplumber==0.10.3
-pypdf==4.0.1
+pdfplumber>=0.9.0,<1.0.0
+pypdf>=3.0.0,<5.0.0
 
+# Security and production dependencies
+gunicorn>=20.1.0,<24.0.0
+python-dotenv>=0.19.0,<2.0.0

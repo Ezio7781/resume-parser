@@ -1,0 +1,38 @@
+# Fly.io Deployment Configuration
+
+app = "resume-parser"
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  builder = "heroku/buildpacks:20"
+
+[deploy]
+  release_command = "python python_version_manager.py"
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.concurrency]]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "get"
+    path = "/"
+    protocol = "http"
+    timeout = "5s"
+    type = "simple"
+
+[env]
+  PORT = "8080"
+  FLASK_ENV = "production"

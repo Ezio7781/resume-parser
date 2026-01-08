@@ -1,0 +1,31 @@
+# Docker Compose for local testing and deployment
+version: '3.8'
+
+services:
+  resume-parser:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PORT=5000
+      - SECRET_KEY=local-secret-key
+      - ADMIN_TOKEN=local-admin-token
+      - MASTER_KEY=local-master-key
+      - PARSE_MAX_UPLOADS=100
+      - PARSE_MAX_FILE_MB=10
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - resume-parser-network
+
+networks:
+  resume-parser-network:
+    driver: bridge

@@ -1,0 +1,16 @@
+# Render.com Deployment Configuration
+
+services:
+  type: web
+  name: resume-parser
+  env: python
+  plan: free
+  buildCommand: "pip install -r requirements.txt"
+  startCommand: "gunicorn -b :$PORT app:app --workers 3 --timeout 120"
+  envVars:
+    - key: PORT
+      value: 5000
+    - key: FLASK_ENV
+      value: production
+    - key: PYTHON_VERSION
+      value: "3.11"

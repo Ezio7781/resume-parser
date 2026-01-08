@@ -1,0 +1,12 @@
+# Railway Deployment Configuration
+
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "gunicorn -b :$PORT app:app --workers 3 --timeout 120"
+
+[env]
+PORT = "5000"
+FLASK_ENV = "production"
+PYTHON_VERSION = "3.11"
