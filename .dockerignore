@@ -1,0 +1,102 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Virtual environments
+.venv
+venv/
+ENV/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Documentation
+*.md
+LICENSE
+
+# Node modules (if using npm)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Temp files
+*.tmp
+*.log
+temp/
+tmp/
+
+# Development/testing files
+test_*.py
+*_test.py
+.pytest_cache/
+
+# Railway specific
+.railway/
+railway.toml
+
+# Render specific
+render.yaml
+
+# Fly.io specific
+fly.toml
+
+# Docker files (not needed in image)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Application cache/uploads (if created at runtime)
+uploads/
+cache/
+*.pkl
+*.pickle
